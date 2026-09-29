@@ -6,7 +6,7 @@ use anyhow::Result;
 use app::{App, Mode, PendingAction, PendingActionType};
 use clap::Parser;
 use crossterm::{
-    event::{Event, KeyCode, KeyModifiers},
+    event::{Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -249,6 +249,13 @@ async fn main() -> Result<()> {
 
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = crossterm::event::read()? {
+                // Windows terminals report both key press and release events
+                // (crossterm >= 0.26); only handle presses so each keystroke is
+                // processed exactly once (#27). Auto-repeat is still reported as Press.
+                if key.kind != KeyEventKind::Press {
+                    continue;
+                }
+
                 // Global quit
                 if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
                     app.should_quit = true;
